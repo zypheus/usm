@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\BookLogController;
 use App\Http\Controllers\RFIDScanController;
@@ -42,6 +43,10 @@ use App\Models\Book;
 // =============================
 // Public Routes
 // =============================
+Route::get('/design-system', function () {
+    return Inertia::render('DesignSystem');
+})->name('design-system');
+
 Route::get('/', function () {
     if (auth()->check() && in_array(auth()->user()->role, ['admin', 'staff'], true)) {
         return redirect()->route('book.index');
