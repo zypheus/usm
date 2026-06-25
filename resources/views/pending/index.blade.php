@@ -2,13 +2,14 @@
 
 @section('styles')
     <link rel="stylesheet" href="{{ asset('css/patrons/directory.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/layout/skeleton.css') }}">
 @endsection
 
 @section('content')
 @php
-    $studentCount = $pendingStudents->count();
-    $employeeCount = $pendingEmployees->count();
-    $activeTab = $defaultTab ?? 'students';
+    $studentCount = $pendingStudents->total();
+    $employeeCount = $pendingEmployees->total();
+    $activeTab = $defaultTab ?? request('tab', 'students');
 @endphp
 <div class="patron-dir">
     <header class="patron-dir__hero">
@@ -31,13 +32,32 @@
 
     <div class="patron-dir__stats">
         <div class="patron-dir__stat-card {{ $studentCount > 0 ? 'patron-dir__stat-card--alert' : '' }}">
-            <div class="patron-dir__stat-card__value">{{ $studentCount }}</div>
+            <div class="patron-dir__stat-card__value">{{ number_format($studentCount) }}</div>
             <div class="patron-dir__stat-card__label">Students waiting</div>
         </div>
         <div class="patron-dir__stat-card {{ $employeeCount > 0 ? 'patron-dir__stat-card--alert' : '' }}">
-            <div class="patron-dir__stat-card__value">{{ $employeeCount }}</div>
+            <div class="patron-dir__stat-card__value">{{ number_format($employeeCount) }}</div>
             <div class="patron-dir__stat-card__label">Faculty &amp; staff waiting</div>
         </div>
+    </div>
+
+    <div class="patron-dir__toolbar">
+        <form id="pending-filter-form" method="GET" action="{{ route('pending.index') }}" class="patron-dir__filters">
+            <input type="hidden" name="tab" id="pendingTab" value="{{ $activeTab }}">
+            <div class="patron-dir__field" style="flex: 2 1 220px;">
+                <label for="pending_search">Search</label>
+                <input type="text" name="search" id="pending_search" class="form-control"
+                       placeholder="Name, ID, program…" value="{{ $search ?? request('search') }}">
+            </div>
+            <div class="patron-dir__filter-btn">
+                <button type="submit" class="patron-dir__btn patron-dir__btn--outline">Search</button>
+            </div>
+            @if(request()->filled('search'))
+                <div class="patron-dir__filter-btn">
+                    <a href="{{ route('pending.index', ['tab' => $activeTab]) }}" class="patron-dir__btn patron-dir__btn--outline">Clear</a>
+                </div>
+            @endif
+        </form>
     </div>
 
     <nav class="patron-dir__tabs" aria-label="Pending registration type" role="tablist">
@@ -70,154 +90,59 @@
     <div id="pending-panel-students"
          class="patron-dir__pending-panel {{ $activeTab === 'students' ? 'is-active' : '' }}"
          role="tabpanel"
-         aria-labelledby="pending-tab-students">
-        <div class="patron-dir__card">
-            @if($studentCount > 0)
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Applicant</th>
-                                <th>Program</th>
-                                <th>Year</th>
-                                <th>Submitted</th>
-                                <th class="text-end">Decision</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($pendingStudents as $p)
-                                @php
-                                    $programLabel = $programs->firstWhere('program_code', $p->course)?->program_name ?? $p->course;
-                                @endphp
-                                <tr>
-                                    <td>
-                                        <div class="patron-dir__person">
-                                            @if($p->profile_picture)
-                                                <img src="{{ asset($p->profile_picture) }}" alt="" class="patron-dir__avatar">
-                                            @else
-                                                <span class="patron-dir__avatar patron-dir__avatar--empty">N/A</span>
-                                            @endif
-                                            <div>
-                                                <div class="patron-dir__person-name">{{ $p->lastname }}, {{ $p->firstname }}</div>
-                                                <div class="patron-dir__person-meta">
-                                                    @if($p->id_number) ID {{ $p->id_number }} @endif
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td><span class="patron-dir__chip">{{ $programLabel ?: '—' }}</span></td>
-                                    <td><span class="patron-dir__chip patron-dir__chip--muted">{{ $p->year ?: '—' }}</span></td>
-                                    <td class="text-muted small">{{ $p->created_at?->timezone('Asia/Manila')->diffForHumans() }}</td>
-                                    <td class="text-end">
-                                        @include('patrons.partials.pending_decision_buttons', [
-                                            'approveRoute' => route('students.approve', $p->id),
-                                            'rejectRoute' => route('students.reject', $p->id),
-                                        ])
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                <div class="patron-dir__empty">
-                    <div class="patron-dir__empty-icon">✓</div>
-                    <p class="mb-0">No pending student registrations.</p>
-                </div>
-            @endif
-        </div>
+         aria-labelledby="pending-tab-students"
+         data-hydratable-panel
+         data-loading="false"
+         data-form="#pending-filter-form"
+         data-skeleton="#pending-students-skeleton"
+         data-pagination=".data-panel-pagination"
+         data-path-match="/pending"
+         data-enabled-when-visible="true"
+         data-tab-input="#pendingTab">
+        @include('pending.partials.students-table', [
+            'pendingStudents' => $pendingStudents,
+            'programs' => $programs,
+            'search' => $search ?? request('search'),
+        ])
     </div>
 
     <div id="pending-panel-employees"
          class="patron-dir__pending-panel {{ $activeTab === 'employees' ? 'is-active' : '' }}"
          role="tabpanel"
-         aria-labelledby="pending-tab-employees">
-        <div class="patron-dir__card">
-            @if($employeeCount > 0)
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead>
-                            <tr>
-                                <th>Applicant</th>
-                                <th>Designation</th>
-                                <th>Program</th>
-                                <th>Start year</th>
-                                <th>Submitted</th>
-                                <th class="text-end">Decision</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($pendingEmployees as $e)
-                                @php
-                                    $programLabel = $programs->firstWhere('program_code', $e->program)?->program_name
-                                        ?? $e->program
-                                        ?? $e->department;
-                                @endphp
-                                <tr>
-                                    <td>
-                                        <div class="patron-dir__person">
-                                            @if($e->formal_picture)
-                                                <img src="{{ asset($e->formal_picture) }}" alt="" class="patron-dir__avatar">
-                                            @else
-                                                <span class="patron-dir__avatar patron-dir__avatar--empty">N/A</span>
-                                            @endif
-                                            <div>
-                                                <div class="patron-dir__person-name">
-                                                    {{ $e->lastname }}, {{ $e->firstname }}
-                                                    @if($e->middle_initial) {{ $e->middle_initial }}. @endif
-                                                </div>
-                                                <div class="patron-dir__person-meta">{{ $e->employee_id }}</div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td>{{ $e->designation ?? $e->position ?? '—' }}</td>
-                                    <td><span class="patron-dir__chip">{{ $programLabel ?: '—' }}</span></td>
-                                    <td><span class="patron-dir__chip patron-dir__chip--muted">{{ $e->year_start_work ?? '—' }}</span></td>
-                                    <td class="text-muted small">{{ $e->created_at?->timezone('Asia/Manila')->diffForHumans() }}</td>
-                                    <td class="text-end">
-                                        @include('patrons.partials.pending_decision_buttons', [
-                                            'approveRoute' => route('employees.approve', $e->id),
-                                            'rejectRoute' => route('employees.reject', $e->id),
-                                        ])
-                                    </td>
-                                </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            @else
-                <div class="patron-dir__empty">
-                    <div class="patron-dir__empty-icon">✓</div>
-                    <p class="mb-0">No pending faculty &amp; staff registrations.</p>
-                </div>
-            @endif
-        </div>
+         aria-labelledby="pending-tab-employees"
+         data-hydratable-panel
+         data-loading="false"
+         data-form="#pending-filter-form"
+         data-skeleton="#pending-employees-skeleton"
+         data-pagination=".data-panel-pagination"
+         data-path-match="/pending"
+         data-enabled-when-visible="true"
+         data-tab-input="#pendingTab">
+        @include('pending.partials.employees-table', [
+            'pendingEmployees' => $pendingEmployees,
+            'programs' => $programs,
+            'search' => $search ?? request('search'),
+        ])
     </div>
 </div>
 
-<script>
-    (function () {
-        const tabs = document.querySelectorAll('[data-pending-tab]');
-        const panels = {
-            students: document.getElementById('pending-panel-students'),
-            employees: document.getElementById('pending-panel-employees'),
-        };
+<template id="pending-students-skeleton">
+    @include('partials.skeleton-table', [
+        'columns' => 5,
+        'rows' => 8,
+        'loadingLabel' => 'Loading pending students…',
+        'headers' => ['Applicant', 'Program', 'Year', 'Submitted', 'Decision'],
+        'skeletonFirstCol' => 'avatar',
+    ])
+</template>
 
-        tabs.forEach((tab) => {
-            tab.addEventListener('click', () => {
-                const key = tab.getAttribute('data-pending-tab');
-
-                tabs.forEach((t) => {
-                    const active = t === tab;
-                    t.classList.toggle('active', active);
-                    t.setAttribute('aria-selected', active ? 'true' : 'false');
-                });
-
-                Object.entries(panels).forEach(([name, panel]) => {
-                    panel?.classList.toggle('is-active', name === key);
-                });
-            });
-        });
-    })();
-</script>
+<template id="pending-employees-skeleton">
+    @include('partials.skeleton-table', [
+        'columns' => 6,
+        'rows' => 8,
+        'loadingLabel' => 'Loading pending faculty & staff…',
+        'headers' => ['Applicant', 'Designation', 'Program', 'Start year', 'Submitted', 'Decision'],
+        'skeletonFirstCol' => 'avatar',
+    ])
+</template>
 @endsection

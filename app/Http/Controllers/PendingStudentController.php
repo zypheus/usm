@@ -2,33 +2,80 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\PendingStudent;
 use App\Models\Student;
 use App\Models\Program;
 use App\Models\PendingEmployee;
 use App\Models\Role;
 use App\Support\MiddleInitial;
+use App\Support\PerPage;
+use App\Support\RespondsWithHydratablePartial;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class PendingStudentController extends Controller
 {
-    
-    public function index()
-    {
-        $pendingEmployees = PendingEmployee::with('role')->latest()->get();
-        $pendingStudents = PendingStudent::with('role')->latest()->get();
-        $programs = Program::orderBy('program_name')->get();
-        $defaultTab = 'students';
-        $backRoute = route('students.index');
+    use RespondsWithHydratablePartial;
 
-        return view('pending.index', compact(
-            'pendingStudents',
-            'pendingEmployees',
-            'programs',
-            'defaultTab',
-            'backRoute',
-        ));
+    public function index(Request $request)
+    {
+        $search = $request->input('search');
+        $programs = Cache::remember('pending.program_list', 600, fn () =>
+            Program::orderBy('program_name')->get()
+        );
+        $defaultTab = $request->input('tab', 'students');
+        $backRoute = $defaultTab === 'employees'
+            ? route('employees.index')
+            : route('students.index');
+        $perPage = PerPage::resolve($request, 15);
+
+        $pendingStudents = PendingStudent::with('role')
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('firstname', 'like', "%{$search}%")
+                        ->orWhere('lastname', 'like', "%{$search}%")
+                        ->orWhere('course', 'like', "%{$search}%")
+                        ->orWhere('year', 'like', "%{$search}%")
+                        ->orWhere('id_number', 'like', "%{$search}%");
+                });
+            })
+            ->latest()
+            ->paginate($perPage, ['*'], 'students_page')
+            ->withQueryString();
+
+        $pendingEmployees = PendingEmployee::with('role')
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('firstname', 'like', "%{$search}%")
+                        ->orWhere('lastname', 'like', "%{$search}%")
+                        ->orWhere('designation', 'like', "%{$search}%")
+                        ->orWhere('program', 'like', "%{$search}%")
+                        ->orWhere('department', 'like', "%{$search}%")
+                        ->orWhere('employee_id', 'like', "%{$search}%");
+                });
+            })
+            ->latest()
+            ->paginate($perPage, ['*'], 'employees_page')
+            ->withQueryString();
+
+        return $this->hydratableResponse(
+            $request,
+            'pending.index',
+            'pending.partials.students-table',
+            compact(
+                'pendingStudents',
+                'pendingEmployees',
+                'programs',
+                'defaultTab',
+                'backRoute',
+                'search',
+            ),
+            fn (Request $request) => $request->input('tab', 'students') === 'employees'
+                ? 'pending.partials.employees-table'
+                : 'pending.partials.students-table',
+        );
     }
 
     public function create()

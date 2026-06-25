@@ -10,7 +10,9 @@ export default defineConfig({
             input: ['resources/css/app.css', 'resources/js/app.jsx', 'resources/js/admin-shell.jsx'],
             refresh: true,
         }),
-        react(),
+        react({
+            include: ['resources/js/**/*.jsx'],
+        }),
         tailwindcss(),
     ],
     resolve: {

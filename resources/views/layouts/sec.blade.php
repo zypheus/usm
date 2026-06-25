@@ -14,6 +14,7 @@
     @stack('styles')
     @yield('styles')
 
+    @viteReactRefresh
     @vite(['resources/css/app.css', 'resources/js/admin-shell.jsx'])
     <link rel="stylesheet" href="{{ asset('css/brand-typography.css') }}">
 </head>
@@ -32,6 +33,9 @@
 
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
+    <script src="{{ asset('js/data-panel.js') }}" defer></script>
+    <script src="{{ asset('js/pending-tabs.js') }}" defer></script>
+    <script src="{{ asset('js/admin-hydration.js') }}" defer></script>
     @stack('scripts')
     @yield('scripts')
 </body>

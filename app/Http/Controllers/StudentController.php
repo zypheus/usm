@@ -13,7 +13,9 @@ use App\Models\AdminActivity;
 use App\Services\AdminActivityLogger;
 use App\Support\MiddleInitial;
 use App\Support\PerPage;
+use App\Support\RespondsWithHydratablePartial;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -21,6 +23,14 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class StudentController extends Controller
 {
+    use RespondsWithHydratablePartial;
+
+    private function programList()
+    {
+        return Cache::remember('students.program_list', 600, fn () =>
+            Program::orderBy('program_code')->get()
+        );
+    }
     
     private function generateNextQrCode()
     {
@@ -41,7 +51,7 @@ class StudentController extends Controller
     public function index(Request $request)
     {
         $query = Student::query();
-        $programs = Program::orderBy('program_code')->get();
+        $programs = $this->programList();
     
         // 🔍 Search
         if ($request->has('search') && $request->search != '') {
@@ -73,12 +83,17 @@ class StudentController extends Controller
         $pendingEditsCount = StudentEditRequest::where('status', 'pending')->count();
         $pendingRegistrationsCount = PendingStudent::count();
 
-        return view('students.students', compact(
-            'students',
-            'programs',
-            'pendingEditsCount',
-            'pendingRegistrationsCount',
-        ));
+        return $this->hydratableResponse(
+            $request,
+            'students.students',
+            'students.partials.list-table',
+            compact(
+                'students',
+                'programs',
+                'pendingEditsCount',
+                'pendingRegistrationsCount',
+            ),
+        );
     }
 
     // Show form to create new student

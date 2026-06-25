@@ -19,6 +19,7 @@ function AdminShellApp({ shellProps }) {
         }
 
         bladeRoot.remove();
+        window.dispatchEvent(new CustomEvent('admin-shell:content-ready'));
     }, []);
 
     return (

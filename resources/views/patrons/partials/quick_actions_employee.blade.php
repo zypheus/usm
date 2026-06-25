@@ -1,5 +1,5 @@
 <nav class="patron-dir__quick-actions" aria-label="Employee queue shortcuts">
-    <a href="{{ route('pending.employees') }}"
+    <a href="{{ route('pending.index', ['tab' => 'employees']) }}"
        class="patron-dir__quick-action {{ ($pendingRegistrationsCount ?? 0) > 0 ? 'patron-dir__quick-action--attention' : '' }}">
         <span class="patron-dir__quick-action-label">Pending registrations</span>
         @if(($pendingRegistrationsCount ?? 0) > 0)
