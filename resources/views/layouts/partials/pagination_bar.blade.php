@@ -1,6 +1,6 @@
 @php
     /** @var \Illuminate\Contracts\Pagination\LengthAwarePaginator $paginator */
-    $pageResetKeys = array_merge(['page', 'pending_page', 'logs_page'], $pageResetKeys ?? []);
+    $pageResetKeys = array_merge(['page', 'pending_page', 'logs_page', 'students_page', 'employees_page'], $pageResetKeys ?? []);
     $hiddenQuery = collect(request()->query())
         ->except(array_merge(['per_page'], $pageResetKeys, $excludeParams ?? []))
         ->all();
@@ -31,7 +31,7 @@
         <span class="small text-muted mb-0">results per page</span>
     </form>
 
-    <div class="pagination-bar__links mb-0">
+    <div class="pagination-bar__links mb-0 data-panel-pagination">
         {{ $paginator->withQueryString()->links('pagination::bootstrap-5') }}
     </div>
 </div>

@@ -33,6 +33,9 @@
 
     <script src="{{ asset('vendor/bootstrap/js/bootstrap.bundle.min.js') }}"></script>
     <script src="{{ asset('vendor/jquery/jquery.min.js') }}"></script>
+    <script src="{{ asset('js/data-panel.js') }}" defer></script>
+    <script src="{{ asset('js/pending-tabs.js') }}" defer></script>
+    <script src="{{ asset('js/admin-hydration.js') }}" defer></script>
     @stack('scripts')
     @yield('scripts')
 </body>

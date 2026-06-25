@@ -9,12 +9,23 @@ use App\Models\AdminActivity;
 use App\Services\AdminActivityLogger;
 use App\Support\MiddleInitial;
 use App\Support\PerPage;
+use App\Support\RespondsWithHydratablePartial;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class EmployeeController extends Controller
 {
+    use RespondsWithHydratablePartial;
+
+    private function programList()
+    {
+        return Cache::remember('employees.program_list', 600, fn () =>
+            Program::orderBy('program_name')->get()
+        );
+    }
+
     private function generateNextQrCode(): string
     {
         $last = Employee::whereNotNull('qrcode')
@@ -40,7 +51,7 @@ class EmployeeController extends Controller
 
     public function index(Request $request)
     {
-        $programs = Program::orderBy('program_name')->get();
+        $programs = $this->programList();
         $workStartYears = $this->workStartYears();
 
         $query = Employee::query();
@@ -70,7 +81,12 @@ class EmployeeController extends Controller
 
         $pendingRegistrationsCount = PendingEmployee::count();
 
-        return view('employees.index', compact('faculty', 'programs', 'workStartYears', 'pendingRegistrationsCount'));
+        return $this->hydratableResponse(
+            $request,
+            'employees.index',
+            'employees.partials.list-table',
+            compact('faculty', 'programs', 'workStartYears', 'pendingRegistrationsCount'),
+        );
     }
 
     public function create()

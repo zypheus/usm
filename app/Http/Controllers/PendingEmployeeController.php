@@ -25,20 +25,11 @@ class PendingEmployeeController extends Controller
         return view('pending.register', compact('roles', 'programs', 'workStartYears'));
     }
 
-    public function index()
+    public function index(Request $request)
     {
-        $pendingStudents = PendingStudent::with('role')->latest()->get();
-        $pendingEmployees = PendingEmployee::with('role')->latest()->get();
-        $programs = Program::orderBy('program_name')->get();
-        $defaultTab = 'employees';
-        $backRoute = route('employees.index');
-
-        return view('pending.index', compact(
-            'pendingStudents',
-            'pendingEmployees',
-            'programs',
-            'defaultTab',
-            'backRoute',
+        return redirect()->route('pending.index', array_merge(
+            $request->query(),
+            ['tab' => 'employees'],
         ));
     }
 

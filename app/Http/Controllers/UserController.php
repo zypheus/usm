@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Support\PerPage;
+use App\Support\RespondsWithHydratablePartial;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Models\AdminActivity;
@@ -10,6 +11,8 @@ use Illuminate\Support\Facades\Hash;
 
 class UserController extends Controller
 {
+    use RespondsWithHydratablePartial;
+
     public function create()
     {
         // Show the createuser form
@@ -60,7 +63,12 @@ class UserController extends Controller
             ->groupBy('role')
             ->pluck('total', 'role');
 
-        return view('accounts.index', compact('users', 'roleCounts'));
+        return $this->hydratableResponse(
+            $request,
+            'accounts.index',
+            'accounts.partials.list-table',
+            compact('users', 'roleCounts'),
+        );
     }
 
     public function edit($id)

@@ -2,18 +2,45 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
+use App\Exports\AttendanceLogsExport;
 use App\Models\AttendanceLog;
 use App\Models\Program;
 use App\Models\Student;
 use App\Services\PatronAttendanceReportService;
 use App\Support\PerPage;
+use App\Support\RespondsWithHydratablePartial;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\AttendanceLogsExport;
 
 class AttendanceLogController extends Controller
 {
+    use RespondsWithHydratablePartial;
+
+    /** @return \Illuminate\Support\Collection<int, string> */
+    private function studentCourses()
+    {
+        return Cache::remember('attendance.student_courses', 600, fn () =>
+            Student::select('course')->distinct()->orderBy('course')->pluck('course')
+        );
+    }
+
+    /** @return \Illuminate\Support\Collection<int, string> */
+    private function studentYears()
+    {
+        return Cache::remember('attendance.student_years', 600, fn () =>
+            Student::select('year')->whereNotNull('year')->where('year', '!=', '')->distinct()->orderBy('year')->pluck('year')
+        );
+    }
+
+    private function programList()
+    {
+        return Cache::remember('attendance.program_list', 600, fn () =>
+            Program::orderBy('program_name')->get()
+        );
+    }
+
     public function index(Request $request)
     {
         $logs = AttendanceLog::with('student')
@@ -46,11 +73,16 @@ class AttendanceLogController extends Controller
             ->withQueryString();
 
         $students = Student::orderBy('lastname')->get();
-        $courses = Student::select('course')->distinct()->orderBy('course')->pluck('course');
-        $years = Student::select('year')->whereNotNull('year')->where('year', '!=', '')->distinct()->orderBy('year')->pluck('year');
-        $programs = Program::orderBy('program_name')->get();
+        $courses = $this->studentCourses();
+        $years = $this->studentYears();
+        $programs = $this->programList();
 
-        return view('attendance_logs.index', compact('logs', 'students', 'courses', 'years', 'programs'));
+        return $this->hydratableResponse(
+            $request,
+            'attendance_logs.index',
+            'attendance_logs.partials.list-table',
+            compact('logs', 'students', 'courses', 'years', 'programs'),
+        );
     }
 
     public function create()

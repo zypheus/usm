@@ -110,7 +110,9 @@ class AdminActivityLogger
 
     public static function patronRegistration(string $kind, string $name, string $idNumber): void
     {
-        $route = $kind === 'employee' ? route('pending.employees') : route('pending.index');
+        $route = $kind === 'employee'
+            ? route('pending.index', ['tab' => 'employees'])
+            : route('pending.index');
 
         self::log(
             AdminActivity::TYPE_PATRON_REGISTRATION,

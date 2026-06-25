@@ -3,6 +3,7 @@
 @section('styles')
     <link rel="stylesheet" href="{{ asset('css/patrons/directory.css') }}">
     <link rel="stylesheet" href="{{ asset('css/attendance_logs/page.css') }}">
+    <link rel="stylesheet" href="{{ asset('css/layout/skeleton.css') }}">
 @endsection
 
 @section('content')
@@ -40,7 +41,7 @@
     </nav>
 
     <div class="attn-logs__filters-card">
-        <form method="GET" action="{{ route('attendance_logs.index') }}" class="attn-logs__filters">
+        <form id="attendance-logs-filter-form" method="GET" action="{{ route('attendance_logs.index') }}" class="attn-logs__filters">
             <div class="attn-logs__field" style="flex: 2 1 200px;">
                 <label for="attn_search">Search</label>
                 <input type="text" name="search" id="attn_search" class="form-control"
@@ -91,86 +92,28 @@
     </div>
 
     <div class="attn-logs__card">
-        @if($logs->total() > 0)
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead>
-                        <tr>
-                            <th>Student</th>
-                            <th>Program</th>
-                            <th>Year</th>
-                            <th>Status</th>
-                            <th>Scanned at</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @foreach($logs as $log)
-                            @php
-                                $student = $log->student;
-                                $programLabel = $student
-                                    ? ($programs->firstWhere('program_code', $student->course)?->program_name ?? $student->course)
-                                    : null;
-                                $status = strtolower((string) $log->status);
-                                $scanned = $log->scanned_at?->timezone('Asia/Manila');
-                            @endphp
-                            <tr>
-                                <td>
-                                    @if($student)
-                                        <div class="attn-logs__person-name">
-                                            {{ $student->lastname }}, {{ $student->firstname }}
-                                        </div>
-                                        @if($student->id_number)
-                                            <div class="attn-logs__person-meta">ID {{ $student->id_number }}</div>
-                                        @endif
-                                    @else
-                                        <span class="text-muted">Unknown student</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($programLabel)
-                                        <span class="attn-logs__chip">{{ $programLabel }}</span>
-                                    @else
-                                        <span class="text-muted">—</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($student?->year)
-                                        <span class="attn-logs__chip attn-logs__chip--muted">{{ $student->year }}</span>
-                                    @else
-                                        <span class="text-muted">—</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($status === 'in')
-                                        <span class="attn-logs__status attn-logs__status--in">In</span>
-                                    @elseif($status === 'out')
-                                        <span class="attn-logs__status attn-logs__status--out">Out</span>
-                                    @else
-                                        <span class="attn-logs__status attn-logs__status--unknown">{{ $log->status ?? '—' }}</span>
-                                    @endif
-                                </td>
-                                <td>
-                                    @if($scanned)
-                                        <span class="attn-logs__time">
-                                            {{ $scanned->format('M j, Y') }}
-                                            <small>{{ $scanned->format('g:i A') }}</small>
-                                        </span>
-                                    @else
-                                        <span class="text-muted">—</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-            @include('layouts.partials.pagination_bar', ['paginator' => $logs])
-        @else
-            <div class="attn-logs__empty">
-                <p class="mb-2">No attendance records match your filters.</p>
-                <a href="{{ route('attendance_logs.index') }}" class="attn-logs__btn attn-logs__btn--outline">Clear filters</a>
-            </div>
-        @endif
+        <div id="attendance-logs-data-panel"
+             data-hydratable-panel
+             data-loading="false"
+             data-form="#attendance-logs-filter-form"
+             data-skeleton="#attendance-logs-table-skeleton"
+             data-pagination=".data-panel-pagination"
+             data-path-match="/attendance-logs">
+            @include('attendance_logs.partials.list-table', [
+                'logs' => $logs,
+                'programs' => $programs,
+            ])
+        </div>
     </div>
 </div>
+
+<template id="attendance-logs-table-skeleton">
+    @include('partials.skeleton-table', [
+        'columns' => 5,
+        'rows' => 8,
+        'loadingLabel' => 'Loading attendance logs…',
+        'headers' => ['Student', 'Program', 'Year', 'Status', 'Scanned at'],
+        'skeletonFirstCol' => 'text',
+    ])
+</template>
 @endsection
