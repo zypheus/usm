@@ -24,6 +24,18 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('reservations:expire')
             ->hourly()
             ->timezone('Asia/Manila');
+
+        $schedule->command('backup:run --only-db')
+            ->dailyAt('01:30')
+            ->timezone('Asia/Manila')
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/scheduler.log'));
+
+        $schedule->command('backup:clean')
+            ->dailyAt('02:30')
+            ->timezone('Asia/Manila')
+            ->withoutOverlapping()
+            ->appendOutputTo(storage_path('logs/scheduler.log'));
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //

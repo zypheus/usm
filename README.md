@@ -19,9 +19,10 @@ Design tokens and shadcn theme vars live in `resources/css/app.css` and `resourc
 
 ## Requirements
 
-- PHP 8.2+ with common Laravel extensions (`pdo_mysql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`, `fileinfo`, `gd`)
+- PHP 8.2+ with common Laravel extensions (`pdo_mysql`, `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath`, `fileinfo`, `gd`, `zip`)
 - Composer
 - MySQL 8+ (or MariaDB)
+- `mysqldump` available on `PATH` (required for database backups)
 - Node.js 18+ and npm (required for Vite — admin shell and Inertia pages will not load without built or dev assets)
 
 ## Quick start (local)
@@ -121,10 +122,35 @@ Add shadcn components with `npx shadcn@latest add <component>` (requires `compon
 | `BRANDING_CSS` | Per-school stylesheet under `public/branding/` (see `public/branding/README.md`) |
 | `SMS_MODEM_URL` / `SMS_MODEM_API_KEY` | Local Flask SMS bridge (optional) |
 | `GOOGLE_BOOKS_API_KEY` | ISBN lookup quota for cataloging (optional) |
+| `BACKUP_ARCHIVE_PASSWORD` | Required secret used to encrypt local database backup archives |
+| `DB_DUMP_BINARY_PATH` | Directory containing `mysqldump` when it is not available on `PATH` (optional) |
 
 Copy `.env.example` — **never commit** your real `.env` file.
 
 `public/branding/branding.css` is gitignored; use `branding.css.example` as the template.
+
+## Scheduled database backups
+
+The application creates an encrypted, database-only backup every day at 1:30 AM Asia/Manila and cleans up old backups at 2:30 AM. Archives are private under `storage/app/private/backups/`; application files are not included.
+
+Set a strong `BACKUP_ARCHIVE_PASSWORD` in production and preserve it separately from the server. If `mysqldump` is not on `PATH`, set `DB_DUMP_BINARY_PATH` to its directory (do not include the executable name).
+
+Run Laravel's scheduler every minute on the production server:
+
+```cron
+* * * * * cd /path/to/usm && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Useful backup checks:
+
+```bash
+php artisan backup:run --only-db
+php artisan backup:list
+php artisan backup:clean
+php artisan schedule:list
+```
+
+Scheduler command output is appended to `storage/logs/scheduler.log`. Periodically restore an archive into a disposable database to confirm that the backups remain usable.
 
 ## Pushing to GitHub
 
